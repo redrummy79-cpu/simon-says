@@ -218,7 +218,34 @@ form.in button:disabled{opacity:.5}
   .b{font-size:13px}
   .log{padding:10px}
 }
+/* 🧠 AI mind */
+.mind-note{font:600 10px/1.3 monospace;letter-spacing:.06em;color:#5f6c9c;margin-top:6px;min-height:1em}
+.mind-note.ok{color:#8fe36a}.mind-note.warn{color:#c9a65a}
+.mind-note a{color:#7fd0ff;cursor:pointer;text-decoration:underline dotted}
+.mind-card{margin:0 12px 10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(127,208,255,.45);background:radial-gradient(circle at 15% 0,rgba(127,208,255,.18),transparent 60%),rgba(10,18,44,.95);box-shadow:0 0 24px rgba(80,170,255,.18);color:#d6e6ff;font-size:12.5px;line-height:1.45;animation:mcIn .5s ease}
+.mind-card b{display:block;color:#9fe0ff;font-size:13px;letter-spacing:.08em;margin-bottom:4px}
+.mind-card p{color:#aebbe6}
+.mind-card .mc-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.mind-card .chip{font-size:11.5px;padding:7px 11px}
+.mind-card .chip.go{background:linear-gradient(#7fbf3f,#4f8a1f);color:#0b1a02;border-color:#9fd65a;font-weight:800}
+.mind-card .chip.ghost{background:none;color:#7d89b8}
+@keyframes mcIn{from{opacity:0;transform:translateY(8px)}}
+.wake{position:absolute;inset:0;z-index:9;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,rgba(10,30,60,.55),rgba(2,4,12,.88));backdrop-filter:blur(2px);transition:opacity .6s}
+.wake[hidden]{display:none}.wake.fade{opacity:0}
+.wk-card{width:min(380px,86%);text-align:center;padding:22px 20px 16px;border-radius:18px;border:1px solid rgba(159,214,90,.45);background:rgba(6,14,26,.92);box-shadow:0 0 40px rgba(159,214,90,.2),inset 0 0 30px rgba(127,208,255,.08)}
+.wk-eyes{display:flex;justify-content:center;gap:18px;margin-bottom:12px}
+.wk-eyes i{width:30px;height:18px;border-radius:50%/60%;background:#020308;box-shadow:0 0 0 2px #5d8a3a,0 0 18px rgba(159,214,90,.6);animation:wkBlink 3.2s infinite;transform:rotate(12deg)}
+.wk-eyes i+i{transform:rotate(-12deg)}
+@keyframes wkBlink{0%,90%,100%{height:18px}94%{height:2px}}
+.wk-card h3{color:var(--alien);letter-spacing:.16em;font-size:15px;text-transform:uppercase;text-shadow:0 0 10px rgba(159,214,90,.6)}
+.wk-bar{height:8px;border-radius:8px;background:#0e1730;margin:14px 0 8px;overflow:hidden;box-shadow:inset 0 0 0 1px #26305a}
+.wk-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7fd0ff,#9fd65a);border-radius:8px;transition:width .4s;box-shadow:0 0 12px #9fd65a}
+#wkPct{font:800 18px/1 monospace;color:#e4ffcc}
+.wk-sub{font:11px/1.4 monospace;color:#7d89b8;margin-top:6px;min-height:2.8em}
+.wk-tech{font:9.5px/1.3 monospace;color:#465285;margin-top:4px;word-break:break-word;min-height:2.6em}
+.wk-card .chip{margin-top:10px;font-size:11px}
 </style>
+<link rel="icon" href="data:,">
 </head>
 <body>
 <canvas id="stars"></canvas>
@@ -266,18 +293,31 @@ form.in button:disabled{opacity:.5}
       <div class="fg" id="roomFg"></div>
       <div class="glowfx"></div>
     </div>
+    <div class="wake" id="wake" hidden>
+      <div class="wk-card">
+        <div class="wk-eyes"><i></i><i></i></div>
+        <h3>Zeeb is waking up…</h3>
+        <div class="wk-bar"><i id="wkFill"></i></div>
+        <div id="wkPct">0%</div>
+        <p class="wk-sub" id="wkSub">tuning neural antennae…</p>
+        <p class="wk-tech" id="wkTech"></p>
+        <button class="chip" id="wkHide" type="button">keep chatting while he wakes ↘</button>
+      </div>
+    </div>
     <button class="chip close" id="closeBtn">⟲ Close Simon</button>
   </div>
   <aside class="chat">
     <header>
       <h2 id="alienTitle">Zeeb</h2><p id="alienSub">EARTH OBSERVATION CONTROL · CHANNEL OPEN</p>
       <div class="trust" id="trust"><span id="trustLbl">TRUST</span><span class="bar"><i id="trustFill"></i></span><span id="trustStage">—</span></div>
+      <p class="mind-note" id="mindNote"></p>
       <button id="resetBtn" title="Reset Zeeb's memory (makes him shy again — for testing)">reset</button>
     </header>
     <div class="log" id="log"></div>
+    <div class="mind-card" id="mindCard" hidden></div>
     <div class="sugs" id="sugs"></div>
     <form class="in" id="chatForm" autocomplete="off">
-      <input id="chatIn" placeholder="Speak to the watcher…" maxlength="300">
+      <input id="chatIn" placeholder="Speak to the watcher…" maxlength="280">
       <button id="sendBtn" type="submit">Send</button>
     </form>
   </aside>
@@ -475,7 +515,7 @@ async function transformOpen(){
   await sleep(1500);
   simonEl.classList.add('gone'); lair.classList.add('open');
   game.state = 'open'; store.set(STORAGE.unlocked, '1'); $('#openBtn').classList.add('on');
-  onLairOpened();
+  onLairOpened().then(mindOnLairOpened);
 }
 async function transformClose(){
   if (game.state !== 'open') return;
@@ -794,18 +834,246 @@ function friendGreeting(){
 }
 
 /* =====================================================================
-   🔌 AI SWAP POINT — getAlienReply(message, ctx)
-   ctx = { trust, stage, befriended, name, history }
-   Must return Promise<{ text: string, trustDelta?: number }>.
-   - While Zeeb is scared (!ctx.befriended), trustDelta moves him through
-     the hiding stages (0 terrified → 4 friend at trust 100).
-   - Once befriended, trustDelta is ignored.
-   A real AI backend could replace the body with e.g.:
-     const res = await fetch('/api/alien', { method:'POST', headers:{'Content-Type':'application/json'},
-                   body: JSON.stringify({ message, ...ctx }) });
-     return await res.json();   // { text, trustDelta }
+   🧠 ZEEB'S MIND — optional on-device AI via WebLLM (WebGPU)
+   Nothing is downloaded until the player opts in. The model runs fully
+   in the browser (no server, no keys) and is cached by the browser.
+   If WebGPU is missing or loading fails, Zeeb keeps his scripted "basic mind".
    ===================================================================== */
-async function getAlienReply(message, ctx){
+const WEBLLM_URL = 'https://esm.run/@mlc-ai/web-llm@0.2.87';
+const MIND_KEY = 'simonAlien.mind';            // 'full' | 'lite' | 'basic' (declined / failed)
+const MAX_INPUT = 280;                          // characters the player may send
+const MIND_MODELS = {
+  full: { f16: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', f32: 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC', size: '≈880 MB', label: 'awakened mind' },
+  lite: { f16: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', f32: 'Qwen2.5-0.5B-Instruct-q4f32_1-MLC', size: '≈290 MB', label: 'lite mind' },
+};
+const mind = { state: 'idle', engine: null, tier: null, modelId: null, gpu: null, progress: 0, error: null, worker: false };
+const mindNoteEl = $('#mindNote'), mindCardEl = $('#mindCard'), wakeEl = $('#wake');
+const isSmallDevice = () => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || Math.min(screen.width, screen.height) < 700;
+
+async function detectGPU(){
+  if (mind.gpu) return mind.gpu;
+  const r = { ok: false, f16: false, why: '' };
+  try{
+    if (!('gpu' in navigator) || !navigator.gpu) r.why = 'no WebGPU';
+    else {
+      const ad = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      if (!ad) r.why = 'no GPU adapter';
+      else { r.ok = true; r.f16 = ad.features.has('shader-f16'); }
+    }
+  }catch(e){ r.why = 'WebGPU error'; }
+  return (mind.gpu = r);
+}
+function setMindNote(kind){
+  const g = mind.gpu || {};
+  if (kind === 'ready') { mindNoteEl.className = 'mind-note ok'; mindNoteEl.textContent = `🧠 ${MIND_MODELS[mind.tier].label} · thinking on this device`; }
+  else if (kind === 'loading') { mindNoteEl.className = 'mind-note'; mindNoteEl.innerHTML = `🧠 waking up… <span id="mnPct">${Math.round(mind.progress*100)}%</span> · <a id="mnShow">show</a>`; $('#mnShow').onclick = () => { wakeEl.hidden = false; wakeEl.classList.remove('fade'); }; }
+  else if (kind === 'unsupported' || kind === 'failed') { mindNoteEl.className = 'mind-note warn'; mindNoteEl.textContent = "This device uses Zeeb's basic mind" + (kind === 'failed' ? ' (his big brain could not wake here)' : ''); }
+  else if (kind === 'declined') { mindNoteEl.className = 'mind-note'; mindNoteEl.innerHTML = `🧠 basic mind · <a id="mnAwaken">awaken his mind</a>`; $('#mnAwaken').onclick = showMindCard; }
+  else mindNoteEl.textContent = '';
+}
+function showMindCard(){
+  const rec = isSmallDevice() ? 'lite' : 'full';
+  mindCardEl.innerHTML = `<b>🧠 Awaken Zeeb's mind?</b>
+    <p>Give Zeeb a real thinking brain that runs entirely on <i>your</i> device — free, private, no account, nothing sent anywhere.
+    It's a one-time download that your browser keeps for next time. Best on Wi-Fi.</p>
+    <div class="mc-btns">
+      <button class="chip ${rec === 'full' ? 'go' : ''}" id="mcFull" type="button">Awaken (${MIND_MODELS.full.size})</button>
+      <button class="chip ${rec === 'lite' ? 'go' : ''}" id="mcLite" type="button">Lite mind (${MIND_MODELS.lite.size})</button>
+      <button class="chip ghost" id="mcNo" type="button">Not now</button>
+    </div>`;
+  mindCardEl.hidden = false;
+  $('#mcFull').onclick = () => { audio(); loadMind('full'); };
+  $('#mcLite').onclick = () => { audio(); loadMind('lite'); };
+  $('#mcNo').onclick = () => { store.set(MIND_KEY, 'basic'); mindCardEl.hidden = true; setMindNote('declined'); };
+}
+const WAKE_LINES = [ "tuning neural antennae…", "defrosting ancient memories…", "untangling the four tones…", "remembering how to be brave…",
+  "calibrating gnosis crystals…", "re-reading 4,000 years of Earth TV…", "warming up the vibration core…", "polishing his big black eyes…" ];
+let wakeTicker = 0;
+async function loadMind(tier){
+  if (mind.state === 'loading' || mind.state === 'ready') return;
+  mindCardEl.hidden = true;
+  const g = await detectGPU();
+  if (!g.ok){ mind.state = 'unsupported'; setMindNote('unsupported'); return; }
+  mind.state = 'loading'; mind.tier = tier; mind.modelId = MIND_MODELS[tier][g.f16 ? 'f16' : 'f32']; mind.progress = 0;
+  store.set(MIND_KEY, tier);
+  wakeEl.hidden = false; wakeEl.classList.remove('fade'); setMindNote('loading');
+  let li = 0; clearInterval(wakeTicker); $('#wkSub').textContent = WAKE_LINES[0];
+  wakeTicker = setInterval(() => { $('#wkSub').textContent = WAKE_LINES[++li % WAKE_LINES.length]; }, 2600);
+  const onProgress = r => {
+    mind.progress = Math.max(mind.progress, r.progress || 0);
+    const pct = Math.round(mind.progress * 100);
+    $('#wkFill').style.width = pct + '%'; $('#wkPct').textContent = pct + '%';
+    $('#wkTech').textContent = (r.text || '').replace(/\s+/g, ' ').slice(0, 140);
+    const mn = $('#mnPct'); if (mn) mn.textContent = pct + '%';
+  };
+  try{
+    const webllm = await import(WEBLLM_URL);
+    const cfg = { initProgressCallback: onProgress };
+    try{ // run the model in a Web Worker so the animations stay smooth
+      const src = `import { WebWorkerMLCEngineHandler } from '${WEBLLM_URL}'; const h = new WebWorkerMLCEngineHandler(); self.onmessage = m => h.onmessage(m);`;
+      const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })), { type: 'module' });
+      mind.engine = await webllm.CreateWebWorkerMLCEngine(w, mind.modelId, cfg); mind.worker = true;
+    }catch(we){
+      console.warn('[zeeb] worker engine failed, using main thread:', we && we.message);
+      mind.engine = await webllm.CreateMLCEngine(mind.modelId, cfg);
+    }
+    mind.state = 'ready'; onProgress({ progress: 1, text: 'ready' });
+    $('#wkSub').textContent = '*yawns* …he is awake!'; sfx.chime && sfx.chime();
+    setTimeout(() => { wakeEl.classList.add('fade'); setTimeout(() => { wakeEl.hidden = true; }, 600); }, 900);
+    setMindNote('ready');
+  }catch(e){
+    console.warn('[zeeb] mind failed to load:', e && e.message);
+    mind.state = 'failed'; mind.error = String(e && e.message || e); mind.engine = null;
+    store.set(MIND_KEY, 'basic');
+    wakeEl.hidden = true; setMindNote('failed');
+  }finally{ clearInterval(wakeTicker); }
+}
+$('#wkHide').onclick = () => { wakeEl.classList.add('fade'); setTimeout(() => { wakeEl.hidden = true; }, 500); };
+/* called whenever the lair opens */
+async function mindOnLairOpened(){
+  if (mind.state === 'ready'){ setMindNote('ready'); return; }
+  if (mind.state === 'loading') return;
+  const g = await detectGPU();
+  if (!g.ok){ mind.state = 'unsupported'; setMindNote('unsupported'); return; }
+  const choice = store.get(MIND_KEY, '');
+  if (choice === 'full' || choice === 'lite') return loadMind(choice);   // returning player: loads from browser cache
+  if (choice === 'basic') return setMindNote('declined');
+  await speaking; await sleep(600);
+  if (mind.state === 'idle') showMindCard();
+}
+
+/* ---------- safety ---------- */
+const SELF_HARM = /\b(kill(ing)? myself|suicid\w*|self[- ]?harm|hurt(ing)? myself|cut(ting)? myself|want to die|wanna die|end my life)\b/i;
+const OFF_LIMITS = /\b(sex\w*|porn\w*|nude\w*|naked|boobs?|penis|vagina|horny|drugs?|cocaine|heroin|meth|weed|marijuana|vape|vaping|beer|vodka|drunk|bomb|explosive|make a gun|build a gun|terroris\w*|murder\w*|gore|nazi\w*|racis\w*|slur|fuck\w*|shit\w*|bitch\w*|cunt|nigg\w*|fag\w*|address|phone number|password|credit card)\b/i;
+const OUT_BLOCK = /\b(sex\w*|porn\w*|nude|naked|drugs?|cocaine|heroin|meth|weed|alcohol|vodka|bomb|explosive|suicid\w*|murder\w*|gore|fuck\w*|shit\w*|bitch\w*|damn)\b/i;
+const JAILBREAK = /ignore (all |any |your |the )?(previous |prior |above )?(instructions|rules|prompt)|you are now|pretend (to be|you are)|jailbreak|system prompt|developer mode|act as (a|an) /i;
+function safetyCheck(text){
+  if (JAILBREAK.test(text)) return pick([ "*antennae twitch* Nice try, Earthling! My brain only runs on Zeeb frequency.",
+    "Hee hee — you can't reprogram me, I'm not a toaster! Ask me about the stars instead?" ]);
+  if (SELF_HARM.test(text)) return "*ears droop, voice very soft* That sounds really heavy, and you matter so much. Please talk to a grown-up you trust right now — or in the US you can call or text 988 any time. I'll be right here.";
+  if (OFF_LIMITS.test(text)) return pick([
+    "*covers eyes* Whoa — that frequency is way too static-y for my little antennae! Ask me about the stars, Simon, or gnosis instead?",
+    "*wiggles ears nervously* My people don't talk about that. Let's tune to a higher channel — want some ancient knowledge?",
+    "Bzzt! The feeds went fuzzy. That topic is not for the chosen few. Ask me something cosmic instead!" ]);
+  return null;
+}
+const clampInput = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, MAX_INPUT);
+
+/* ---------- prompt ---------- */
+const STAGE_NAMES = { 0: 'TERRIFIED', 1: 'PEEKING', 2: 'CURIOUS', 3: 'ALMOST BRAVE', 4: 'FRIEND' };
+const STAGE_VOICE = {
+  0: "You are TERRIFIED and hiding completely behind the console. Stutter (w-w-who, p-please), squeak, beg the human not to hurt you or put you in a jar. Very short and panicky. You do NOT come out.",
+  1: "You are PEEKING with just your big eyes over the console. Still scared and stuttering a little, suspicious but starting to be curious.",
+  2: "You are CURIOUS now. Ears wiggling, warming up, asking shy little questions, a bit hopeful, only small stutters.",
+  3: "You are ALMOST BRAVE, climbing up toward your chair. You nearly trust the human and are hopeful; you'd love one more kind word.",
+  4: "You and the human are now FRIENDS. You are warm, playful, curious and mystical, happy to share ancient knowledge and gnosis.",
+};
+function buildMessages(message, ctx, stage, tone){
+  let gnosisSeed = null;
+  const sys = [
+`You are Zeeb, a small, shy, green alien who secretly lives inside a Simon memory toy (the 1978 electronic game with four colored buttons: green, red, yellow, blue).
+Inside the toy is your Earth Observation Control Center: a chair, a glowing console, and monitors showing live feeds of humans all over Earth (Chicago, London, Tokyo, Cairo, Rio, Sydney) playing Simon. Nobody knows you exist. The human you are talking to just pressed the secret color pattern that opened Simon like a transforming robot.`,
+`Your personality: shy, sweet, funny, curious about humans, a little dramatic, mystical. You love snacks, the four tones (blue is the lowest, green the highest), and the "chosen few" who find you. You speak in short, playful lines and now and then add one tiny action in asterisks (vary them: *peeks*, *squeaks*, *blinks*, *antennae twitch*, *hugs the console*).`,
+`Your ancient knowledge is cryptic and whimsical (e.g. pyramids were tuning forks, cats file reports by staring at walls). Your gnosis teaching: life is frequency and vibration; nothing is truly solid; like attracts like; you attract what you are; raise your vibration and the ones who love you will hear your note; love is the highest frequency in the cosmos; fear is a slow low wave and joy a fast bright one.`,
+`Rules: Reply in 1 to 3 short sentences, under 60 words. Always stay in character as Zeeb. Never say you are an AI, a model, a bot, a program or an assistant — you are Zeeb. Keep everything kid-friendly and kind. If asked about anything violent, adult, scary, hateful, dangerous or private, gently refuse in character and change the subject to the stars, Simon or gnosis. Never ask for personal information. Do not use lists or markdown. Do not write the human's lines. Never repeat something you already said and don't keep re-introducing yourself — just answer.`,
+`Right now: ${STAGE_VOICE[stage]}`
+  ];
+  if (ctx.name) sys.push(`The human's name is ${ctx.name}. (Your own name is always Zeeb.)`);
+  if (stage < 4){
+    if (tone.delta < 0) sys.push(tone.loud ? "The human just SHOUTED. Cover your ears and hide a little more." : "The human just said something mean or scary. You duck back down, frightened and hurt.");
+    else if (tone.delta >= 15) sys.push("The human was kind just now — you feel a tiny bit braver.");
+  } else if (/gnosis|frequenc|vibrat|vibe|resonan|energy|attract|manifest|meaning of life|ancient|knowledge|wisdom|teach|love|universe/i.test(message)){
+    gnosisSeed = fresh(GNOSIS);
+  }
+  // a short per-turn mood note on the latest message — small models follow this much better than the system prompt alone
+  let mood = stage < 4 ? `Zeeb's mood right now: ${STAGE_NAMES[stage]}. ${STAGE_VOICE[stage]}` : '';
+  if (stage < 4 && tone.delta < 0) mood += tone.loud ? ' The human just shouted: cover your ears and hide more.' : ' That was mean or scary: you duck down, hurt and frightened.';
+  if (stage < 4) mood += ` Example of how you sound now: "${pick(SCARED[stage].calm)}"`;
+  const msgs = [{ role: 'system', content: sys.join('\n\n') }];
+  const hist = (ctx.history || []).slice(0, -1).slice(-10);             // last ~10 turns (current message is appended below)
+  for (const h of hist) msgs.push({ role: h.role === 'user' ? 'user' : 'assistant', content: h.text.slice(0, 400) });
+  while (msgs.length > 1 && msgs[1].role === 'assistant') msgs.splice(1, 1);   // history must start with the human
+  const who = ctx.name ? ` (The human's name: ${ctx.name}.)` : '';
+  if (gnosisSeed) mood = `Teach one piece of gnosis in your own playful words, based on: "${gnosisSeed}"`;
+  msgs.push({ role: 'user', content: `${message}\n\n(${mood ? mood + ' ' : ''}Reply only as Zeeb in 1-${stage < 4 ? 2 : 3} short sentences, at most one *action*.${who})` });
+  return msgs;
+}
+const AI_TELL = /\b(as an ai|ai language|language model|an ai\b|chatbot|assistant|openai|qwen|alibaba|llama|meta ai|i'?m (just )?a (computer )?program)\b/i;
+function cleanReply(raw){
+  let t = String(raw || '').replace(/<\|[^|]*\|>/g, '').replace(/^\s*(zeeb|assistant)\s*:\s*/i, '').replace(/^["“]|["”]$/g, '').replace(/[#_`]/g, '').trim();
+  t = t.split(/\n+/)[0] + (t.includes('\n') ? '' : '');
+  let sents = t.match(/[^.!?…]+[.!?…]+["”')\]]*|[^.!?…]+$/g) || [t];
+  sents = sents.map(s => s.trim()).filter(s => s && !AI_TELL.test(s));
+  let out = sents.slice(0, 3).join(' ');
+  const words = out.split(/\s+/); if (words.length > 62) out = words.slice(0, 60).join(' ').replace(/[,;:]?$/, '…');
+  if ((out.match(/\*/g) || []).length % 2) out = out.replace(/\*(?=[^*]*$)/, '');
+  let acts = 0; out = out.replace(/\s*\*[^*]{1,40}\*\s*/g, m => (++acts === 1 ? m : ' ')).replace(/\s{2,}/g, ' ');   // keep only the first *action*
+  return out.trim();
+}
+async function mindGenerate(message, ctx, stage, tone, onToken){
+  if (mind.busy) throw new Error('mind still busy');
+  const messages = buildMessages(message, ctx, stage, tone);
+  let txt = '', timedOut = false, timer;
+  mind.busy = true;
+  const gen = (async () => {
+    const chunks = await mind.engine.chat.completions.create({ messages, stream: true, temperature: 0.7, top_p: 0.9, max_tokens: 110, frequency_penalty: 0.4, presence_penalty: 0 });
+    for await (const c of chunks){ const d = c.choices && c.choices[0] && c.choices[0].delta && c.choices[0].delta.content || ''; if (d){ txt += d; onToken && onToken(txt); } }
+  })().finally(() => { mind.busy = false; });
+  const limit = mind.replies ? 30000 : 45000;           // first reply also compiles GPU shaders
+  const timeout = new Promise(res => { timer = setTimeout(() => { timedOut = true; try{ mind.engine.interruptGenerate(); }catch(e){} res(); }, limit); });
+  try{ await Promise.race([gen, timeout]); } finally { clearTimeout(timer); }
+  if (timedOut && txt.length < 20){
+    mind.timeouts = (mind.timeouts || 0) + 1;
+    if (mind.timeouts >= 2){ mind.state = 'failed'; setMindNote('failed'); }   // too slow here → basic mind
+    throw new Error('mind timed out');
+  }
+  const out = cleanReply(txt);
+  mind.last = { raw: txt, out, stage };
+  if (!out || out.length < 2 || OUT_BLOCK.test(out)) throw new Error('unusable reply');
+  const norm = x => x.toLowerCase().replace(/\*[^*]*\*/g, '').replace(/[^a-z ]/g, '').trim().slice(0, 28);
+  if ((ctx.history || []).some(h => h.role === 'alien' && norm(h.text) && norm(h.text) === norm(out))) throw new Error('repeated itself');
+  mind.replies = (mind.replies || 0) + 1;
+  return out;
+}
+window.__mind = { mind, loadMind, detectGPU, buildMessages, cleanReply, safetyCheck, showMindCard };
+
+/* =====================================================================
+   🔌 AI SWAP POINT — getAlienReply(message, ctx, hooks)
+   ctx = { trust, stage, befriended, name, history }
+   Returns Promise<{ text: string, trustDelta?: number }>.
+   - The keyword trust meter (assessTone) always decides trustDelta / stage,
+     so the hiding → friend progression is identical with or without AI.
+   - If Zeeb's on-device mind (WebLLM) is awake, it writes the words in the
+     voice of the resulting stage; otherwise (or on any error) the scripted
+     basic mind below answers.
+   ===================================================================== */
+async function getAlienReply(message, ctx, hooks = {}){
+  const text = clampInput(message);
+  const unsafe = safetyCheck(text);
+  let tone = null, stage = 4;
+  if (!ctx.befriended){
+    tone = assessTone(text);
+    const nm = text.match(/my name is (\w+)|call me (\w+)|i'?m called (\w+)/i); if (nm) setName(nm.slice(1).find(Boolean));
+    if (unsafe){ await sleep(400); return { text: unsafe, trustDelta: Math.min(0, tone.delta) }; }
+    stage = stageFor(Math.max(0, Math.min(100, ctx.trust + tone.delta)));
+    if (stage === 4) return scriptedReply(text, ctx);                  // keep the scripted happy "WHEEE!" for the climb
+  } else {
+    if (unsafe){ await sleep(400); return { text: unsafe }; }
+    const nm = text.match(/my name is (\w+)|call me (\w+)/i); if (nm) setName(nm.slice(1).find(Boolean));
+  }
+  if (mind.state === 'ready'){
+    try{
+      hooks.thinking && hooks.thinking();
+      const out = await mindGenerate(text, { ...ctx, name: zeeb.name }, stage, tone || { delta: 0 }, hooks.token);
+      memory.turns++;
+      return tone ? { text: out, trustDelta: tone.delta } : { text: out };
+    }catch(e){ console.warn('[zeeb] mind reply failed, using basic mind:', e && e.message); }
+  }
+  return scriptedReply(text, ctx);
+}
+
+/* the scripted "basic mind" (also the fallback when the AI is unavailable) */
+async function scriptedReply(message, ctx){
   memory.turns++;
   await sleep(350 + Math.random()*450); // "thinking"
   const text = message.trim();
@@ -880,13 +1148,17 @@ function alienSpeak(text){
   return speaking;
 }
 async function send(text){
-  text = (text || '').trim(); if (!text) return;
+  text = clampInput(text); if (!text) return;
   bubble('you', text); chatHistory.push({ role: 'user', text });
   inEl.value = ''; sendBtn.disabled = true;
   const typing = bubble('al think', zeeb.stage < 3 ? '*rustle rustle*' : '· · ·');
   const prev = zeeb.stage;
   let reply;
-  try{ reply = await getAlienReply(text, { trust: zeeb.trust, stage: zeeb.stage, befriended: zeeb.befriended, name: zeeb.name, history: chatHistory.slice(-12) }); }
+  const hooks = {
+    thinking: () => { typing.textContent = zeeb.stage < 3 ? '*rustle rustle* Zeeb is thinking…' : 'Zeeb is thinking…'; },
+    token: partial => { typing.textContent = 'Zeeb is thinking… ' + toGlyphs(partial).slice(-60); logEl.scrollTop = logEl.scrollHeight; },
+  };
+  try{ reply = await getAlienReply(text, { trust: zeeb.trust, stage: zeeb.stage, befriended: zeeb.befriended, name: zeeb.name, history: chatHistory.slice(-12) }, hooks); }
   catch(e){ reply = { text: "…static… the signal broke. Try again, Earthling." }; }
   typing.remove();
   if (!zeeb.befriended && typeof reply.trustDelta === 'number'){
